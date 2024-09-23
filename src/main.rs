@@ -1,9 +1,11 @@
-mod task;
+use clap::Parser;
+use fabtask::app::App;
+use fabtask::task::manager::TaskManager;
 
 fn main() {
-    let mut mgr = task::manager::TaskManager::new();
-    match mgr.add(String::from("first"), String::from("first test task")) {
-        Ok(_) => println!("it worked"),
-        Err(_) => println!("failed"),
-    }
+    let app = App::parse();
+    let path = app.path.as_ref().unwrap();
+    let mgr = &mut TaskManager::new(&app.datasource, path);
+
+    app.run_prompt(mgr);
 }

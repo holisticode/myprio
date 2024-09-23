@@ -5,5 +5,9 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.38"
+clap = { version = "4.5.17", features = ["derive"]}
+inquire = { version = "0.7.5", features = ["editor", "date"]}
+log = "0.4.22"
+sqlite = "0.36.1"
 
 [workspace]
