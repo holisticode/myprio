@@ -7,6 +7,7 @@ use crate::task::Task;
 pub trait Datasource {
     fn start(&self) -> Result<()>;
     fn stop(&self) -> Result<bool>;
+    fn remove(&mut self, id: u64) -> Result<bool>;
     fn load_task(&self) -> Result<Task>;
     fn write_task(&mut self, task: Task) -> Result<bool>;
     fn list(&self, tasks: &mut Vec<Task>) -> Result<()>;

@@ -34,6 +34,10 @@ impl Datasource for MemoryDataSource {
         todo!()
     }
 
+    fn remove(&mut self, id: u64) -> Result<bool> {
+        todo!()
+    }
+
     fn write_task(&mut self, task: Task) -> crate::error::Result<bool> {
         self.tasks.push(task);
         Ok(true)

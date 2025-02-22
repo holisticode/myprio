@@ -12,7 +12,7 @@ pub enum TaskStatus {
 }
 
 pub struct Task {
-    id: Option<u64>,
+    pub id: Option<u64>,
     pub short: String,
     pub desc: String,
     pub created: DateTime<Utc>,

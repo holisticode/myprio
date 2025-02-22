@@ -1,11 +1,14 @@
-use crate::error::Result;
 use log;
 
+use crate::error::Result;
 use crate::{
     app::Datasources,
     source::{memory::MemoryDataSource, sqllite::SqlLiteDataSource, Datasource},
     task::Task,
 };
+
+const TASK_SHORT_LEN: usize = 25;
+const TASK_DESC_LEN: usize = 40;
 
 pub struct TaskManager {
     source: Box<dyn Datasource>,
@@ -28,7 +31,7 @@ impl TaskManager {
         self.print_task_list(tasks);
     }
 
-    pub fn new(datasource: &Datasources, path: &String) -> Self {
+    pub fn new(datasource: Datasources, path: &String) -> Self {
         let ds: Box<dyn Datasource> = match datasource {
             Datasources::SqlLite => Box::new(SqlLiteDataSource::new(path).unwrap_or_else(|e| {
                 panic!("creating requested sqllite datasource failed: {e:?}");
@@ -47,14 +50,31 @@ impl TaskManager {
         Self { source: ds }
     }
 
+    pub fn remove(&mut self, id: u64) -> Result<bool> {
+        self.source.remove(id)
+    }
+
     fn print_task_list(&self, tasks: Vec<Task>) {
-        println!("==============================================================================================================");
+        println!("==============================================================================================");
         println!("Current task list");
-        println!("==============================================================================================================");
-        println!("|   task name    |        description                                                                        |");
+        println!("==============================================================================================");
+        println!("| id\t  | task{} | description                                                             |", " ".repeat(TASK_SHORT_LEN - String::from("task").len()));
+        println!("----------------------------------------------------------------------------------------------");
         for t in tasks {
-            println!("| {}          | {} ", t.short, t.desc);
+            let desc_display = t.desc.clone();
+            let parts: Vec<&str> = desc_display.split('\n').collect();
+            let show = parts[0];
+            if show.len() > TASK_DESC_LEN {
+                show.to_string().truncate(TASK_DESC_LEN)
+            };
+            println!(
+                "|  {:x?}\t  | {:.25}{} | {} ",
+                t.id.unwrap(),
+                t.short,
+                " ".repeat(TASK_SHORT_LEN - t.short.len()),
+                show,
+            );
         }
-        println!("==============================================================================================================");
+        println!("===============================================================================================");
     }
 }
