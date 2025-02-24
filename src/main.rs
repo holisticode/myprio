@@ -1,5 +1,3 @@
-use env_logger;
-
 use clap::Parser;
 use fabtask::app::{App, Datasources};
 use fabtask::task::manager::TaskManager;

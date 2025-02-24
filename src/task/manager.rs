@@ -7,6 +7,8 @@ use crate::{
     task::Task,
 };
 
+use super::TaskStatus;
+
 const TASK_SHORT_LEN: usize = 25;
 const TASK_DESC_LEN: usize = 40;
 
@@ -15,20 +17,8 @@ pub struct TaskManager {
 }
 
 impl TaskManager {
-    pub fn add(&mut self, task: Task) -> Result<bool> {
+    pub fn add(&mut self, task: Task) -> Result<usize> {
         self.source.write_task(task)
-    }
-
-    pub fn list(&mut self) {
-        let mut tasks: Vec<Task> = Vec::new();
-        match self.source.list(&mut tasks) {
-            Ok(tsks) => tsks,
-            Err(e) => {
-                log::error!("failed to fetch task list from datasource: {e:?}");
-                return;
-            }
-        };
-        self.print_task_list(tasks);
     }
 
     pub fn new(datasource: Datasources, path: &String) -> Self {
@@ -50,15 +40,36 @@ impl TaskManager {
         Self { source: ds }
     }
 
-    pub fn remove(&mut self, id: u64) -> Result<bool> {
+    pub fn list(&mut self) {
+        let mut tasks: Vec<Task> = Vec::new();
+        match self.source.list(&mut tasks) {
+            Ok(tsks) => tsks,
+            Err(e) => {
+                log::error!("failed to fetch task list from datasource: {e:?}");
+                return;
+            }
+        };
+        self.print_task_list(tasks);
+    }
+
+    pub fn remove(&mut self, id: u64) -> Result<usize> {
         self.source.remove(id)
+    }
+
+    pub fn set_status(&mut self, id: u64, task: Task) -> Result<usize> {
+        log::debug!("{:x?}", task);
+        self.source.update_task(id, task)
+    }
+
+    pub fn get_task(&mut self, id: u64) -> Result<Task> {
+        self.source.get(id)
     }
 
     fn print_task_list(&self, tasks: Vec<Task>) {
         println!("==============================================================================================");
         println!("Current task list");
         println!("==============================================================================================");
-        println!("| id\t  | task{} | description                                                             |", " ".repeat(TASK_SHORT_LEN - String::from("task").len()));
+        println!("| id\t  | task{} | status{} | description                                                             |", " ".repeat(TASK_SHORT_LEN - String::from("task").len()), " ".repeat(20));
         println!("----------------------------------------------------------------------------------------------");
         for t in tasks {
             let desc_display = t.desc.clone();
@@ -68,9 +79,11 @@ impl TaskManager {
                 show.to_string().truncate(TASK_DESC_LEN)
             };
             println!(
-                "|  {:x?}\t  | {:.25}{} | {} ",
+                "|  {:x?}\t  | {:.25}{} | {:.20}{} | {} ",
                 t.id.unwrap(),
                 t.short,
+                " ".repeat(20 - t.status.to_string().len()),
+                t.status.to_string(),
                 " ".repeat(TASK_SHORT_LEN - t.short.len()),
                 show,
             );

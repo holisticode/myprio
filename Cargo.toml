@@ -10,6 +10,8 @@ env_logger = "0.11.6"
 home = "0.5.9"
 inquire = { version = "0.7.5", features = ["editor", "date"]}
 log = "0.4.22"
-sqlite = "0.36.1"
+rusqlite = { version = "0.33.0", features = ["chrono"] }
+strum = "0.27.1"
+strum_macros = "0.27.1"
 
 [workspace]

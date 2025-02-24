@@ -3,7 +3,7 @@ use crate::source::Datasource;
 use crate::task::Task;
 
 pub struct MemoryDataSource {
-    settings: MemorySettings,
+    //settings: MemorySettings,
     tasks: Vec<Task>,
 }
 
@@ -13,9 +13,8 @@ pub struct MemorySettings {
 
 impl MemoryDataSource {
     pub fn new() -> Result<Self> {
-        let settings = MemorySettings {};
         Ok(Self {
-            settings,
+            //settings: MemorySettings {},
             tasks: vec![],
         })
     }
@@ -34,16 +33,24 @@ impl Datasource for MemoryDataSource {
         todo!()
     }
 
-    fn remove(&mut self, id: u64) -> Result<bool> {
+    fn remove(&mut self, _id: u64) -> Result<usize> {
         todo!()
     }
 
-    fn write_task(&mut self, task: Task) -> crate::error::Result<bool> {
+    fn write_task(&mut self, task: Task) -> crate::error::Result<usize> {
         self.tasks.push(task);
-        Ok(true)
+        Ok(1)
     }
 
     fn list(&self, _: &mut Vec<Task>) -> Result<()> {
+        todo!()
+    }
+
+    fn get(&self, _id: u64) -> Result<Task> {
+        todo!()
+    }
+
+    fn update_task(&mut self, _id: u64, _task: Task) -> Result<usize> {
         todo!()
     }
 }
