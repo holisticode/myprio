@@ -1,4 +1,3 @@
-pub mod memory;
 pub mod sqllite;
 
 use crate::error::Result;

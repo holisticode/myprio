@@ -2,10 +2,10 @@ use std::str::FromStr;
 
 use crate::error::{Error, Result};
 use crate::task::manager::TaskManager;
-use crate::task::{NoSuchStatusError, Task, TaskStatus};
+use crate::task::{NoSuchStatusError, Task, TaskPriority, TaskStatus};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use home;
-use inquire::{Confirm, Editor, Text};
+use inquire::{Confirm, Editor, Select, Text};
 
 use strum::IntoEnumIterator;
 
@@ -75,7 +75,16 @@ impl App {
     fn run_add_command(&self) -> Result<Task> {
         let name = Text::new("Task name?").prompt()?;
         let desc = Editor::new("What needs to be done?").prompt()?;
-        Ok(Task::new(name, desc))
+        let mut options: Vec<String> = vec![];
+        for p in TaskPriority::iter() {
+            options.push(p.to_string());
+        }
+        let prio = Select::new("What priority to work on it?", options).prompt()?;
+        Ok(Task::new(
+            name,
+            desc,
+            TaskPriority::from_str(prio.as_str())?,
+        ))
     }
 
     fn run_remove_command(&self) -> Result<u64> {
@@ -130,5 +139,4 @@ pub enum Command {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Datasources {
     SqlLite,
-    Memory,
 }

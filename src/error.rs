@@ -3,6 +3,8 @@ use std::num::ParseIntError;
 use inquire;
 use rusqlite;
 
+use crate::task::NoSuchStatusError;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
@@ -16,6 +18,12 @@ pub enum Error {
 
 impl From<rusqlite::Error> for Error {
     fn from(err: rusqlite::Error) -> Self {
+        Self::IOError(err.to_string())
+    }
+}
+
+impl From<NoSuchStatusError> for Error {
+    fn from(err: NoSuchStatusError) -> Self {
         Self::IOError(err.to_string())
     }
 }

@@ -1,12 +1,14 @@
+use std::cmp::Ordering;
+
 use log;
 use rusqlite::{
     types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
-    Connection, ToSql,
+    Connection, Row, ToSql,
 };
 
 use crate::error::Result;
 use crate::source::Datasource;
-use crate::task::{Task, TaskStatus};
+use crate::task::{Task, TaskPriority, TaskStatus};
 
 pub struct SqlLiteDataSource {
     settings: SqlLiteSettings,
@@ -23,7 +25,7 @@ impl SqlLiteDataSource {
         log::debug!("SqlLite database path: {}", path);
         let conn = Connection::open(path)?;
         log::debug!("creating new database!");
-        let table = "CREATE TABLE IF NOT EXISTS tasks(short TEXT, desc TEXT, status TEXT, created TEXT, started TEXT);";
+        let table = "CREATE TABLE IF NOT EXISTS tasks(short TEXT, desc TEXT, status TEXT, created TEXT, started TEXT, prio TEXT);";
         conn.execute(table, ())?;
         Ok(Self { settings, conn })
     }
@@ -45,13 +47,14 @@ impl Datasource for SqlLiteDataSource {
 
     fn write_task(&mut self, task: Task) -> Result<usize> {
         Ok(self.conn.execute(
-            "INSERT INTO tasks (short,desc,status,created,started) VALUES (?1, ?2, ?3, ?4, ?5);",
+            "INSERT INTO tasks (short,desc,status,created,started,prio) VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
             (
                 task.short,
                 task.desc,
                 task.status,
                 task.created,
                 task.started,
+                task.prio,
             ),
         )?)
     }
@@ -66,16 +69,7 @@ impl Datasource for SqlLiteDataSource {
         let select = "SELECT rowid, * from tasks";
         let mut statement = self.conn.prepare(select).unwrap();
 
-        let tasks_iter = statement.query_map([], |row| {
-            Ok(Task {
-                id: Some(row.get(0)?),
-                short: row.get(1)?,
-                desc: row.get(2)?,
-                status: row.get(3)?,
-                created: row.get(4)?,
-                started: row.get(5)?,
-            })
-        })?;
+        let tasks_iter = statement.query_map([], |row| row_to_task(row))?;
         for t in tasks_iter {
             tasks.push(t?)
         }
@@ -86,14 +80,7 @@ impl Datasource for SqlLiteDataSource {
         Ok(self
             .conn
             .query_row("SELECT rowid,* from tasks where rowid=?1", [id], |row| {
-                Ok(Task {
-                    id: Some(row.get(0)?),
-                    short: row.get(1)?,
-                    desc: row.get(2)?,
-                    status: row.get(3)?,
-                    created: row.get(4)?,
-                    started: row.get(5)?,
-                })
+                row_to_task(row)
             })?)
     }
 
@@ -112,6 +99,21 @@ impl Datasource for SqlLiteDataSource {
     }
 }
 
+impl ToSql for TaskPriority {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(self.to_string().into())
+    }
+}
+
+impl FromSql for TaskPriority {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        value
+            .as_str()?
+            .parse()
+            .map_err(|e| FromSqlError::Other(Box::new(e)))
+    }
+}
+
 impl ToSql for TaskStatus {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         Ok(self.to_string().into())
@@ -125,4 +127,16 @@ impl FromSql for TaskStatus {
             .parse()
             .map_err(|e| FromSqlError::Other(Box::new(e)))
     }
+}
+
+fn row_to_task(row: &Row<'_>) -> std::result::Result<Task, rusqlite::Error> {
+    Ok(Task {
+        id: Some(row.get(0)?),
+        short: row.get(1)?,
+        desc: row.get(2)?,
+        status: row.get(3)?,
+        created: row.get(4)?,
+        started: row.get(5)?,
+        prio: row.get(6)?,
+    })
 }
