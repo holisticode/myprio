@@ -20,6 +20,7 @@ impl TaskManager {
         self.source.write_task(task)
     }
 
+    // TODO: path should probably be a PathBuf or Path
     pub fn new(datasource: Datasources, path: &String) -> Self {
         let ds: Box<dyn Datasource> = match datasource {
             Datasources::SqlLite => Box::new(SqlLiteDataSource::new(path).unwrap_or_else(|e| {
@@ -104,6 +105,85 @@ impl TaskManager {
         println!(" Priority: {}", task.prio.to_string());
         println!(" Status: {}", task.status.to_string());
 
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use tempfile;
+
+    use super::*;
+    use crate::task::{TaskPriority, TaskStatus};
+
+    #[test]
+    fn create_db() -> Result<()> {
+        let ds = Datasources::SqlLite;
+        let f = tempfile::NamedTempFile::new()?;
+        let path = f.path();
+        let tmpfile = path.to_string_lossy();
+
+        // because we created the tempfile already, it should actually already exist...
+        assert!(fs::exists(path).expect("this is a temp file and should exist"));
+        let _mgr = TaskManager::new(ds, &tmpfile.to_string());
+        // should still be there
+        assert!(fs::exists(path).expect("this file should now exist"));
+
+        // should fail, non-existing path
+        let should_panic =
+            std::panic::catch_unwind(|| TaskManager::new(ds, &"/root/no_perms.sql".to_string()));
+        assert!(should_panic.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn ops() -> Result<()> {
+        let ds = Datasources::SqlLite;
+        let f = tempfile::NamedTempFile::new()?;
+        let path = f.path();
+        let tmpfile = path.to_string_lossy();
+
+        // because we created the tempfile already, it should actually already exist...
+        assert!(fs::exists(path).expect("this is a temp file and should exist"));
+        let mut mgr = TaskManager::new(ds, &tmpfile.to_string());
+        // listing should just work
+        mgr.list(&None);
+
+        let t = Task::new(
+            "test42".to_string(),
+            "test4242".to_string(),
+            TaskPriority::UrgentAndImportant,
+        );
+        // add a new task
+        assert_eq!(mgr.add(t).ok(), Some(1));
+        assert!(mgr.get_task(99).is_err());
+        // get it and compare
+        let mut ctrl = mgr.get_task(1);
+        assert!(ctrl.is_ok());
+        let mut ctrl_task = ctrl.unwrap();
+        assert_eq!(ctrl_task.id, Some(1));
+        assert_eq!(ctrl_task.short, "test42");
+        assert_eq!(ctrl_task.desc, "test4242");
+        assert_eq!(ctrl_task.prio, TaskPriority::UrgentAndImportant);
+        assert!(matches!(ctrl_task.status, TaskStatus::Created));
+
+        // update status
+        let mut update = ctrl_task.clone();
+        update.status = TaskStatus::WontDo;
+        assert_eq!(mgr.set_status(1, update).ok(), Some(1));
+        ctrl = mgr.get_task(1);
+        assert!(ctrl.is_ok());
+        ctrl_task = ctrl.unwrap();
+        assert_eq!(ctrl_task.id, Some(1));
+        assert_eq!(ctrl_task.short, "test42");
+        assert_eq!(ctrl_task.desc, "test4242");
+        assert_eq!(ctrl_task.prio, TaskPriority::UrgentAndImportant);
+        assert!(matches!(ctrl_task.status, TaskStatus::WontDo));
+
+        assert_eq!(mgr.remove(1).ok(), Some(1));
+        ctrl = mgr.get_task(1);
+        assert!(ctrl.is_err());
         Ok(())
     }
 }

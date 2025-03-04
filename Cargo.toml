@@ -13,5 +13,6 @@ log = "0.4.22"
 rusqlite = { version = "0.33.0", features = ["chrono"] }
 strum = "0.27.1"
 strum_macros = "0.27.1"
+tempfile = "3.17.1"
 
 [workspace]

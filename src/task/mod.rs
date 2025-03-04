@@ -37,7 +37,7 @@ impl Debug for NoSuchStatusError {
     }
 }
 
-#[derive(Debug, EnumIter)]
+#[derive(Debug, EnumIter, Clone)]
 pub enum TaskStatus {
     Created,
     Started,
@@ -47,7 +47,7 @@ pub enum TaskStatus {
     Deleted,
 }
 
-#[derive(Debug, PartialEq, Eq, EnumIter)]
+#[derive(Debug, PartialEq, Eq, EnumIter, Clone)]
 pub enum TaskPriority {
     UrgentAndImportant,
     UrgentNotImportant,
@@ -60,7 +60,7 @@ pub enum TaskPriority {
 
 pub type Timestamp = DateTime<Utc>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Task {
     pub id: Option<u64>,
     pub short: String,
@@ -142,14 +142,6 @@ impl Ord for TaskPriority {
         self.get_ordering_value().cmp(&other.get_ordering_value())
     }
 }
-
-/*
-impl PartialEq for TaskPriority {
-    fn eq(&self, other: &Self) -> bool {
-        self.get_ordering_value().eq(&other.get_ordering_value())
-    }
-}
-*/
 
 // TODO
 #[allow(clippy::to_string_trait_impl)]

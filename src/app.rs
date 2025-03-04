@@ -89,37 +89,33 @@ impl App {
             options.push(f.to_string())
         }
         match FilterOptions::from_str(&Select::new("Filter:", options).prompt()?)? {
-            FilterOptions::ByName => {
-                return Ok((
-                    FilterOptions::ByName,
-                    Text::new("Search by name:").prompt()?,
-                ))
-            }
+            FilterOptions::ByName => Ok((
+                FilterOptions::ByName,
+                Text::new("Search by name:").prompt()?,
+            )),
             FilterOptions::ByStatus => {
                 let mut status_opts: Vec<String> = vec![];
                 for st in TaskStatus::iter() {
                     status_opts.push(st.to_string())
                 }
-                return Ok((
+                Ok((
                     FilterOptions::ByStatus,
                     Select::new("New Status?", status_opts).prompt()?,
-                ));
-            }
-            FilterOptions::ByGroup => {
-                return Ok((
-                    FilterOptions::ByName,
-                    Text::new("Search by group:").prompt()?,
                 ))
             }
+            FilterOptions::ByGroup => Ok((
+                FilterOptions::ByName,
+                Text::new("Search by group:").prompt()?,
+            )),
             FilterOptions::ByPriority => {
                 let mut prio_opts: Vec<String> = vec![];
                 for st in TaskPriority::iter() {
                     prio_opts.push(st.to_string())
                 }
-                return Ok((
+                Ok((
                     FilterOptions::ByPriority,
                     Select::new("New Status?", prio_opts).prompt()?,
-                ));
+                ))
             }
         }
     }
@@ -194,7 +190,7 @@ pub enum Command {
     Show,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Datasources {
     SqlLite,
 }
@@ -232,5 +228,19 @@ impl FromStr for FilterOptions {
             _ => return Err(EnumParseError {}),
         };
         Ok(opt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use home;
+
+    #[test]
+    fn default_settings() {
+        let settings = default_sqllite_settings();
+        assert_eq!(settings.datasource, Datasources::SqlLite);
+        let db = home::home_dir().unwrap().join(TASKS_DB_FILE_NAME);
+        assert_eq!(settings.path, db.to_string_lossy());
     }
 }
