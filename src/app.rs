@@ -1,13 +1,15 @@
+use std::fmt::Display;
 use std::str::FromStr;
 
-use crate::error::{Error, Result};
+use crate::error::{EnumParseError, Error, Result};
 use crate::task::manager::TaskManager;
-use crate::task::{NoSuchStatusError, Task, TaskPriority, TaskStatus};
+use crate::task::{Task, TaskPriority, TaskStatus};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use home;
 use inquire::{Confirm, Editor, Select, Text};
 
 use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 //const DESC_LEN: u8 = 32;
 const TASKS_DB_FILE_NAME: &str = "mytasks.sql";
@@ -46,19 +48,28 @@ pub struct App {
     #[arg(value_enum)]
     #[clap(group = "ds")]
     pub datasource: Option<Datasources>,
-    //#[arg(short,long, num_args(0..))]
-    //#[clap(group = "ds")]
-    //pub path: String,
+    #[arg(short, long)]
+    pub filter: bool,
 }
 
 impl App {
     pub fn run_prompt(&self, manager: &mut TaskManager) {
         match &self.command {
+            Command::List => {
+                let mut filter: Option<(FilterOptions, String)> = None;
+                if self.filter {
+                    filter = Some(self.run_list_command().unwrap());
+                }
+                manager.list(&filter);
+            }
             Command::Add => match manager.add(self.run_add_command().unwrap()) {
                 Ok(_) => log::info!("added task successfully"),
                 Err(e) => log::error!("failed to add task: {e:?}"),
             },
-            Command::List => manager.list(),
+            Command::Show => match manager.show(self.ask_task_id().unwrap()) {
+                Ok(_) => log::info!("show task run successfully"),
+                Err(e) => log::error!("failed to show task: {e:?}"),
+            },
             Command::Remove => match manager.remove(self.run_remove_command().unwrap()) {
                 Ok(_) => log::info!("removed task successfully"),
                 Err(e) => log::error!("failed to remove task: {e:?}"),
@@ -69,6 +80,47 @@ impl App {
             },
 
             _ => todo!(),
+        }
+    }
+
+    fn run_list_command(&self) -> Result<(FilterOptions, String)> {
+        let mut options: Vec<String> = vec![];
+        for f in FilterOptions::iter() {
+            options.push(f.to_string())
+        }
+        match FilterOptions::from_str(&Select::new("Filter:", options).prompt()?)? {
+            FilterOptions::ByName => {
+                return Ok((
+                    FilterOptions::ByName,
+                    Text::new("Search by name:").prompt()?,
+                ))
+            }
+            FilterOptions::ByStatus => {
+                let mut status_opts: Vec<String> = vec![];
+                for st in TaskStatus::iter() {
+                    status_opts.push(st.to_string())
+                }
+                return Ok((
+                    FilterOptions::ByStatus,
+                    Select::new("New Status?", status_opts).prompt()?,
+                ));
+            }
+            FilterOptions::ByGroup => {
+                return Ok((
+                    FilterOptions::ByName,
+                    Text::new("Search by group:").prompt()?,
+                ))
+            }
+            FilterOptions::ByPriority => {
+                let mut prio_opts: Vec<String> = vec![];
+                for st in TaskPriority::iter() {
+                    prio_opts.push(st.to_string())
+                }
+                return Ok((
+                    FilterOptions::ByPriority,
+                    Select::new("New Status?", prio_opts).prompt()?,
+                ));
+            }
         }
     }
 
@@ -88,19 +140,24 @@ impl App {
     }
 
     fn run_remove_command(&self) -> Result<u64> {
-        let strid = Text::new("Task id?").prompt()?;
+        let uid = self.ask_task_id()?;
         println!("WARNING: The remove command ERASES the task from the database.");
         println!("This can not be undone. You could also just change status or mark the task done");
         let confirm = Confirm::new("Are you really sure you want to delete this task?").prompt()?;
         if confirm {
-            return Ok(strid.parse::<u64>()?);
+            return Ok(uid);
         }
         Err(Error::UserAbort)
     }
 
-    fn set_status_command(&self, manager: &mut TaskManager) -> Result<()> {
+    fn ask_task_id(&self) -> Result<u64> {
         let strid = Text::new("Task id?").prompt()?;
         let uid = strid.parse::<u64>()?;
+        Ok(uid)
+    }
+
+    fn set_status_command(&self, manager: &mut TaskManager) -> Result<()> {
+        let uid = self.ask_task_id()?;
         let mut task = manager.get_task(uid)?;
         let current_status = task.status.to_string();
         println!("Current status is: {}", current_status);
@@ -134,9 +191,46 @@ pub enum Command {
     Edit,
     List,
     SetStatus,
+    Show,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum Datasources {
     SqlLite,
+}
+
+pub struct NoFilter {}
+
+#[derive(Debug, EnumIter, Eq, PartialEq)]
+pub enum FilterOptions {
+    ByName,
+    ByStatus,
+    ByGroup,
+    ByPriority,
+}
+
+impl Display for FilterOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ByName => write!(f, "By Name"),
+            Self::ByStatus => write!(f, "By Status"),
+            Self::ByGroup => write!(f, "By Group"),
+            Self::ByPriority => write!(f, "By Priority"),
+        }
+    }
+}
+
+impl FromStr for FilterOptions {
+    type Err = EnumParseError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let opt = match s {
+            "By Name" => Self::ByName,
+            "By Status" => Self::ByStatus,
+            "By Group" => Self::ByGroup,
+            "By Priority" => Self::ByPriority,
+            _ => return Err(EnumParseError {}),
+        };
+        Ok(opt)
+    }
 }

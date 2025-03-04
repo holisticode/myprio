@@ -1,12 +1,12 @@
 use clap::Parser;
-use fabtask::app::{App, Datasources};
-use fabtask::task::manager::TaskManager;
+use myprio::app::{App, Datasources};
+use myprio::task::manager::TaskManager;
 
 fn main() {
     env_logger::init();
     let app = App::parse();
     //let path = &app.path;
-    let default_settings = fabtask::app::default_sqllite_settings();
+    let default_settings = myprio::app::default_sqllite_settings();
     let path = &default_settings.path;
     let ds = match app.datasource {
         None => Datasources::SqlLite,

@@ -16,6 +16,9 @@ pub enum Error {
     UserAbort,
 }
 
+#[derive(Debug)]
+pub struct EnumParseError;
+
 impl From<rusqlite::Error> for Error {
     fn from(err: rusqlite::Error) -> Self {
         Self::IOError(err.to_string())
@@ -48,5 +51,12 @@ impl From<inquire::InquireError> for Error {
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Self::IOError(err.to_string())
+    }
+}
+
+impl From<EnumParseError> for Error {
+    fn from(_err: EnumParseError) -> Self {
+        log::error!("Selected option does not exist");
+        Self::ParsingError
     }
 }

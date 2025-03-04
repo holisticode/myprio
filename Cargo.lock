@@ -251,21 +251,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fabtask"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "env_logger",
- "home",
- "inquire",
- "log",
- "rusqlite",
- "strum",
- "strum_macros",
-]
-
-[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -457,6 +442,21 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "myprio"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "env_logger",
+ "home",
+ "inquire",
+ "log",
+ "rusqlite",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]

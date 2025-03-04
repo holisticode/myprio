@@ -1,14 +1,12 @@
-use std::cmp::Ordering;
-
 use log;
 use rusqlite::{
     types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
     Connection, Row, ToSql,
 };
 
-use crate::error::Result;
 use crate::source::Datasource;
 use crate::task::{Task, TaskPriority, TaskStatus};
+use crate::{app::FilterOptions, error::Result};
 
 pub struct SqlLiteDataSource {
     settings: SqlLiteSettings,
@@ -65,11 +63,28 @@ impl Datasource for SqlLiteDataSource {
             .execute("DELETE from tasks where rowid=?1", [id])?)
     }
 
-    fn list(&self, tasks: &mut Vec<Task>) -> Result<()> {
-        let select = "SELECT rowid, * from tasks";
-        let mut statement = self.conn.prepare(select).unwrap();
+    fn list(&self, tasks: &mut Vec<Task>, filter: &Option<(FilterOptions, String)>) -> Result<()> {
+        let mut select = "SELECT rowid, * from tasks".to_string();
+        if filter.is_some() {
+            select += " WHERE ";
+            let f = filter.as_ref().unwrap();
+            let opt = match f.0 {
+                FilterOptions::ByName => "short",
+                FilterOptions::ByStatus => "status",
+                FilterOptions::ByGroup => "",
+                FilterOptions::ByPriority => "prio",
+            };
+            let val = &f.1;
+            if f.0 == FilterOptions::ByName {
+                select += &format!("{} LIKE '%{}%'", &opt, &val).to_string();
+            } else {
+                select += &format!("{}='{}'", &opt, &val).to_string();
+            }
+            log::debug!("{}", select);
+        }
+        let mut statement = self.conn.prepare(&select).unwrap();
 
-        let tasks_iter = statement.query_map([], |row| row_to_task(row))?;
+        let tasks_iter = statement.query_map([], row_to_task)?;
         for t in tasks_iter {
             tasks.push(t?)
         }

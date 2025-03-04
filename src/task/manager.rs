@@ -1,13 +1,12 @@
 use log;
 
+use crate::app::FilterOptions;
 use crate::error::Result;
 use crate::{
     app::Datasources,
     source::{sqllite::SqlLiteDataSource, Datasource},
     task::Task,
 };
-
-use super::TaskStatus;
 
 const TASK_SHORT_LEN: usize = 30;
 const TASK_DESC_LEN: usize = 40;
@@ -37,9 +36,9 @@ impl TaskManager {
         Self { source: ds }
     }
 
-    pub fn list(&mut self) {
+    pub fn list(&mut self, filter: &Option<(FilterOptions, String)>) {
         let mut tasks: Vec<Task> = Vec::new();
-        match self.source.list(&mut tasks) {
+        match self.source.list(&mut tasks, filter) {
             Ok(tsks) => tsks,
             Err(e) => {
                 log::error!("failed to fetch task list from datasource: {e:?}");
@@ -92,5 +91,19 @@ impl TaskManager {
                 show,
             );
         }
+    }
+
+    pub(crate) fn show(&self, id: u64) -> Result<()> {
+        let task = self.source.get(id)?;
+        println!("==================================================================================================================");
+        println!(" Show info for task: {}", task.id.unwrap());
+        println!("------------------------------------------------------------------------------------------------------------------");
+        println!(" ID: {}", task.id.unwrap());
+        println!(" Task: {}", task.short);
+        println!(" Description: {}", task.desc);
+        println!(" Priority: {}", task.prio.to_string());
+        println!(" Status: {}", task.status.to_string());
+
+        Ok(())
     }
 }
